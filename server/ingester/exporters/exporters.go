@@ -322,20 +322,23 @@ func (es *Exporters) getPutCache(dataSourceId, decoderId, exporterId int) *Expor
 }
 
 func (es *Exporters) Put(dataSourceId uint32, decoderIndex int, item common.ExportItem) {
+	log.Infof("lzf put dataSourceId %d decoderIndex %d", dataSourceId, decoderIndex)
 	if utils.IsNil(item) {
 		es.Flush(int(dataSourceId), decoderIndex)
 		return
 	}
 
 	if dataSourceId != item.DataSource() {
-		log.Warningf("datasourceId %d != itemDatasoure %d", dataSourceId, item.DataSource())
+		log.Warningf("lzf datasourceId %d != itemDatasoure %d", dataSourceId, item.DataSource())
 		return
 	}
 	if es.dataSourceExporters[dataSourceId] == nil {
+		log.Infof("lzf drop dataSourceId %d decoderIndex %d", dataSourceId, decoderIndex)
 		return
 	}
 	exporters := es.dataSourceExporters[dataSourceId]
 	if len(exporters) == 0 {
+		log.Infof("lzf drop dataSourceId %d decoderIndex %d", dataSourceId, decoderIndex)
 		return
 	}
 	exporterCfgs := es.dataSourceExporterCfgs[dataSourceId]
