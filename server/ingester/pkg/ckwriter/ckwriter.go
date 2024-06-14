@@ -123,9 +123,14 @@ func InitTable(addr, user, password, timeZone string, t *ckdb.Table, orgID uint1
 			Username: user,
 			Password: password,
 		},
+		DialTimeout: 5 * time.Second,
 	})
 	if err != nil {
 		return err
+	}
+
+	if err := conn.Ping(context.Background()); err != nil {
+		log.Warningf("ping faild, err: %s", err)
 	}
 
 	if err := initTable(conn, timeZone, t, orgID); err != nil {
@@ -347,6 +352,7 @@ func (w *CKWriter) ResetConnection(connID int) error {
 			Username: w.user,
 			Password: w.password,
 		},
+		DialTimeout: 5 * time.Second,
 	})
 	return err
 }
