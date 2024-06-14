@@ -84,7 +84,19 @@ func ExecSQL(conn clickhouse.Conn, query string) error {
 	} else {
 		log.Info("Exec SQL: ", query)
 	}
-	return conn.Exec(context.Background(), query)
+	err := conn.Exec(context.Background(), query)
+	retry := 3
+	for err != nil && retry > 0 {
+		log.Warningf("Exec SQL (%s) failed: %s, will retry", query[:SQL_LOG_LENGTH], err)
+		time.Sleep(time.Second)
+		err = conn.Exec(context.Background(), query)
+		if err == nil {
+			log.Infof("Retry Exec SQL (%s) success", query[:SQL_LOG_LENGTH])
+			return nil
+		}
+		retry--
+	}
+	return err
 }
 
 func initTable(conn clickhouse.Conn, timeZone string, t *ckdb.Table, orgID uint16) error {
