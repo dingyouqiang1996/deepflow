@@ -459,7 +459,7 @@ func (e *VTapEvent) Sync(ctx context.Context, in *api.SyncRequest) (*api.SyncRes
 	if versionGroups != in.GetVersionGroups() {
 		groups = gVTapInfo.GetGroupData()
 		if e.CheckVersion(in.GetRevision()) {
-			log.Info("agent version(%s) ModifyGroups, Please update agent to 6.5", in.GetRevision())
+			log.Infof("agent version(%s) ModifyGroups, Please update agent to 6.5", in.GetRevision())
 			groups = e.ModifyGroups(groups)
 		}
 	}
