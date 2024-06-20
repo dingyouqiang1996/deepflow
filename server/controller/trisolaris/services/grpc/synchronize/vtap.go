@@ -776,6 +776,11 @@ func (e *VTapEvent) pushResponse(in *api.SyncRequest, all bool) (*api.SyncRespon
 		}
 	}
 
+	if e.CheckVersion(in.GetRevision()) {
+		log.Infof("agent version(%s) ModifyGroups, Please update agent to 6.5", in.GetRevision())
+		groups = e.ModifyGroups(groups)
+	}
+
 	// 只有专属采集器下发tap_types
 	tapTypes := []*api.TapType{}
 	if vtapCache.GetVTapType() == VTAP_TYPE_DEDICATED {
