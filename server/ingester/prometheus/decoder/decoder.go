@@ -77,6 +77,7 @@ type BuilderCounter struct {
 }
 
 type PrometheusSamplesBuilder struct {
+	index               int
 	name                string
 	labelTable          *PrometheusLabelTable
 	platformData        *grpc.PlatformInfoTable
@@ -110,6 +111,7 @@ func (d *PrometheusSamplesBuilder) GetCounter() interface{} {
 
 func NewPrometheusSamplesBuilder(name string, index int, platformData *grpc.PlatformInfoTable, labelTable *PrometheusLabelTable, appLabelColumnAlign int, ignoreUniversalTag bool) *PrometheusSamplesBuilder {
 	p := &PrometheusSamplesBuilder{
+		index:               index,
 		name:                name,
 		platformData:        platformData,
 		labelTable:          labelTable,
@@ -444,16 +446,25 @@ func (b *PrometheusSamplesBuilder) TimeSeriesToStore(vtapID, epcId, podClusterId
 			m.MetricID = metricID
 			m.AppLabelValueIDs = append(m.AppLabelValueIDs, b.appLabelValueIDsBuffer...)
 			m.Value = v
+			m.VtapId = vtapID
 			m.OrgId, m.TeamID = orgId, teamID
 
 			if i == 0 {
 				b.fillUniversalTag(m, vtapID, podName, instance, podNameID, instanceID, false)
 				universalTag = &m.UniversalTag
 			} else {
+				log.Infof("lizf %d ecp=%d ip=%s", i, m.UniversalTag.L3EpcID, m.UniversalTag.IP)
 				// all samples share the same universal tag
-				m.UniversalTag = *universalTag
+				if universalTag != nil {
+					m.UniversalTag = *universalTag
+				} else {
+					b.fillUniversalTag(m, vtapID, podName, instance, podNameID, instanceID, false)
+				}
 			}
 			b.samplesBuffer = append(b.samplesBuffer, m)
+			if m.UniversalTag.L3EpcID == -2 && m.UniversalTag.IP != 0 && orgId == 1 && m.MetricID == 605 {
+				log.Warningf("lizf orgid=%d epc=-2, ip=%d agent_id=%d m=%+v", m.OrgId, m.UniversalTag.IP, m.VtapId, m)
+			}
 		}
 
 		b.counter.Sample++
@@ -532,6 +543,9 @@ func (b *PrometheusSamplesBuilder) fillUniversalTagSlow(m *dbwriter.PrometheusSa
 			ip = net.ParseIP(instanceIP)
 			if ip != nil {
 				hasMatched = true
+			}
+			if t.L3EpcID == -2 {
+				log.Infof("index=%d name=%s lizf orgId=%d instanceIP=%s vtapID=%d ip=%s vtap=%s", b.index, b.name, m.OrgId, instanceIP, vtapID, ip, b.platformData.HandleSimpleCommand(0, "vtap"))
 			}
 		}
 	}

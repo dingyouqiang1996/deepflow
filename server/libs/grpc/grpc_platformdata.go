@@ -1066,6 +1066,9 @@ func (t *PlatformInfoTable) updatePlatformData(orgId uint16, platformData *tride
 
 func (t *PlatformInfoTable) updateOthers(orgId uint16, response *trident.SyncResponse) {
 	vtapIps := response.GetVtapIps()
+	if orgId == 1 {
+		log.Infof("lizf master update orgId=%d response is %s", orgId, vtapIps)
+	}
 	t.updateVtapIps(orgId, vtapIps)
 	podIps := response.GetPodIps()
 	if podIps != nil {
@@ -1131,6 +1134,9 @@ func (t *PlatformInfoTable) ReloadSlave(orgId uint16) error {
 		t.otherRegionCount[orgId] = 0
 	}
 	t.vtapIdInfos[orgId] = masterTable.vtapIdInfos[orgId]
+	if orgId == 1 {
+		log.Infof("lizf reload slave %s orgId=1, vtaps_len=%d", t.moduleName, len(t.vtapIdInfos[orgId]))
+	}
 	t.orgIds = masterTable.orgIds
 	t.podNameInfos[orgId] = masterTable.podNameInfos[orgId]
 	t.regionID = masterTable.regionID
@@ -1542,7 +1548,13 @@ func updateInterfaceInfos(epcIDIPV4Infos map[uint64]*Info, epcIDIPV6Infos map[[E
 
 func (t *PlatformInfoTable) QueryVtapEpc0(orgId, vtapId uint16) int32 {
 	if vtapInfo, ok := t.vtapIdInfos[orgId][vtapId]; ok {
+		if vtapInfo.EpcId == -2 && orgId == 1 {
+			log.Warningf("lizf orgId=1 vtapId=%d query vtap epc11 failed, vtaps=%+v", vtapId, t.vtapIdInfos[orgId])
+		}
 		return int32(vtapInfo.EpcId)
+	}
+	if orgId == 1 {
+		log.Warningf("lizf orgId=1 vtapId=%d query vtap epc22 failed, vtaps=%+v", vtapId, t.vtapIdInfos[orgId])
 	}
 	return datatype.EPC_FROM_INTERNET
 }
@@ -1615,6 +1627,9 @@ func (t *PlatformInfoTable) QueryVtapEpc1(orgId, vtapId uint16, isIPv4 bool, ip4
 }
 
 func (t *PlatformInfoTable) updateVtapIps(orgId uint16, vtapIps []*trident.VtapIp) {
+	if vtapIps == nil && orgId == 1 {
+		log.Infof("lizf get vtapIdInfos nil orgId=%d", orgId)
+	}
 	vtapIdInfos := make(map[uint16]*VtapInfo)
 	for _, vtapIp := range vtapIps {
 		// vtapIp.GetEpcId() in range (0,64000], when convert to int32, 0 convert to datatype.EPC_FROM_INTERNET
@@ -1631,11 +1646,18 @@ func (t *PlatformInfoTable) updateVtapIps(orgId uint16, vtapIps []*trident.VtapI
 			TeamId:       uint16(vtapIp.GetTeamId()),
 		}
 	}
+	if len(vtapIdInfos) == 0 && orgId == 1 {
+		log.Infof("lizf update vtapIdInfos nil orgId=%d", orgId)
+	}
 	t.vtapIdInfos[orgId] = vtapIdInfos
+	if len(t.vtapIdInfos[orgId]) == 0 && orgId == 1 {
+		log.Infof("lizf update vtapIdInfos nil orgId=%d", orgId)
+	}
 }
 
 func (t *PlatformInfoTable) vtapsString(orgId uint16) string {
 	sb := &strings.Builder{}
+	sb.WriteString(fmt.Sprintf("lizf orgid: %d vtaps_len=%d", orgId, len(t.vtapIdInfos[orgId])))
 	for k, v := range t.vtapIdInfos[orgId] {
 		sb.WriteString(fmt.Sprintf("vtapid: %d  %+v\n", k, *v))
 	}

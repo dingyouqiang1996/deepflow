@@ -42,6 +42,7 @@ type PrometheusHandler struct {
 	Decoders             []*decoder.Decoder
 	SlowDecoders         []*decoder.SlowDecoder
 	PlatformDatas        []*grpc.PlatformInfoTable
+	SlowPlatformDatas    []*grpc.PlatformInfoTable
 	prometheusLabelTable *decoder.PrometheusLabelTable
 }
 
@@ -119,14 +120,16 @@ func NewPrometheusHandler(config *config.Config, recv *receiver.Receiver, platfo
 		Config:               config,
 		Decoders:             decoders,
 		PlatformDatas:        platformDatas,
+		SlowPlatformDatas:    slowPlatformDatas,
 		prometheusLabelTable: prometheusLabelTable,
 		SlowDecoders:         slowDecoders,
 	}, nil
 }
 
 func (m *PrometheusHandler) Start() {
-	for _, platformData := range m.PlatformDatas {
-		platformData.Start()
+	for i := range m.PlatformDatas {
+		m.PlatformDatas[i].Start()
+		m.SlowPlatformDatas[i].Start()
 	}
 
 	for i, decoder := range m.Decoders {
