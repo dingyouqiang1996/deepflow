@@ -349,28 +349,6 @@ fn cp_process_name_safe(cp: *mut stack_profile_data) -> String {
     }
 }
 
-#[allow(dead_code)]
-extern "C" fn continuous_profiler_callback(cp: *mut stack_profile_data) {
-    unsafe {
-        //process_stack_trace_data_for_flame_graph(cp);
-        increment_counter((*cp).count, 1);
-        increment_counter(1, 0);
-        //let data = cp_data_str_safe(cp);
-        //println!("\n+ --------------------------------- +");
-        //println!("{} PID {} START-TIME {} NETNS-ID {} U-STACKID {} K-STACKID {} COMM {} CPU {} COUNT {} LEN {} \n  - {}",
-        //           date_time((*cp).timestamp / 1000),
-        //           (*cp).pid,
-        //           (*cp).stime,
-        //           (*cp).netns_id,
-        //           (*cp).u_stack_id,
-        //           (*cp).k_stack_id,
-        //           cp_process_name_safe(cp),
-        //           (*cp).cpu,
-        //           (*cp).count,
-        //           (*cp).stack_data_len, data);
-        //println!("+ --------------------------------- +");
-    }
-}
 
 #[allow(dead_code)]
 fn get_counter(counter_type: u32) -> u32 {
@@ -603,23 +581,6 @@ fn main() {
         let stats = socket_tracer_stats();
         print!("{:#?}\n", stats);
 
-        // enable continuous profiler
-        if start_continuous_profiler(97, 10, 300, continuous_profiler_callback) != 0 {
-            println!("start_continuous_profiler() error.");
-            ::std::process::exit(1);
-        }
-
-        set_profiler_regex(
-            CString::new(
-                "^(mysqld|java|s.*|deepflow-.*)$".as_bytes(),
-            )
-            .unwrap()
-            .as_c_str()
-            .as_ptr(),
-        );
-
-        //// CPUID will not be included in the aggregation of stack trace data.
-        //set_profiler_cpu_aggregation(0);
 
         bpf_tracer_finish();
 
@@ -632,14 +593,6 @@ fn main() {
             std::thread::sleep(Duration::from_secs(1));
         }
 
-        //thread::sleep(Duration::from_secs(60));
-        //stop_continuous_profiler();
-        //print!(
-        //    "====== capture count {}, sum {}\n",
-        //    get_counter(0),
-        //    get_counter(1)
-        //);
-        //release_flame_graph_hash();
     }
 
     loop {

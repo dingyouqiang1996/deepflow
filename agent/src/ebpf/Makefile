@@ -246,6 +246,8 @@ profiler: .profiler
 	    else \
                 cd samples/rust/profiler/ && RUSTFLAGS="-C force-frame-pointers=yes" cargo build --release && cd ../../; \
                 echo "  samples/rust/profiler/target/release/profiler"; \
+                rm -rf ./memcheck; \
+                cp samples/rust/profiler/target/release/profiler ./memcheck; \
 	    fi; \
         else \
             echo "  Error: Invalid arch. $(ARCH) is not support!"; \

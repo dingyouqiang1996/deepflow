@@ -1751,6 +1751,86 @@ TPPROG(sys_exit_recvfrom) (struct syscall_comm_exit_ctx * ctx) {
 	return 0;
 }
 
+union __bpf_attr {
+    struct {
+        __u32 map_type;
+        __u32 key_size;
+        __u32 value_size;
+        __u32 max_entries;
+        __u32 map_flags;
+        __u32 inner_map_fd;
+        __u32 numa_node;
+        char map_name[16];
+        __u32 map_ifindex;
+        __u32 btf_fd;
+        __u32 btf_key_type_id;
+        __u32 btf_value_type_id;
+    };
+};
+
+// stack_map_alloc
+KPROG(stack_map_alloc) (struct pt_regs * ctx) {
+        __u64 id = bpf_get_current_pid_tgid();
+        active_write_args_map__lookup(&id);
+
+        union __bpf_attr *ptr = (union __bpf_attr *) PT_REGS_PARM1(ctx);
+        union __bpf_attr uattr = { 0 };
+        bpf_probe_read_kernel(&uattr, sizeof(uattr), ptr);
+        bpf_debug("STACK map %s\n", uattr.map_name);
+        bpf_debug("STACK map key %u val %u max %u\n", uattr.key_size, uattr.value_size, uattr.max_entries);
+        return 0;
+}
+
+KPROG(cpu_map_alloc) (struct pt_regs * ctx) {
+        __u64 id = bpf_get_current_pid_tgid();
+        active_write_args_map__lookup(&id);
+
+        union __bpf_attr *ptr = (union __bpf_attr *) PT_REGS_PARM1(ctx);
+        union __bpf_attr uattr = { 0 };
+        bpf_probe_read_kernel(&uattr, sizeof(uattr), ptr);
+        bpf_debug("CPU map %s\n", uattr.map_name);
+        bpf_debug("CPU map key %u val %u max %u\n", uattr.key_size, uattr.value_size, uattr.max_entries);
+        return 0;
+}
+
+//static struct bpf_map *array_map_alloc(union bpf_attr *attr)
+KPROG(array_map_alloc) (struct pt_regs * ctx) {
+        __u64 id = bpf_get_current_pid_tgid();
+        active_write_args_map__lookup(&id);
+
+        union __bpf_attr *ptr = (union __bpf_attr *) PT_REGS_PARM1(ctx);
+        union __bpf_attr uattr = { 0 };
+        bpf_probe_read_kernel(&uattr, sizeof(uattr), ptr);
+        bpf_debug("ARRAY map %s\n", uattr.map_name);
+        bpf_debug("ARRAY map key %u val %u max %u\n", uattr.key_size, uattr.value_size, uattr.max_entries);
+        return 0;
+}
+
+//__arm64_sys_bpf
+//SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, size)
+KPROG(htab_map_alloc) (struct pt_regs * ctx) {
+	//__arm64_sys_bpf
+        __u64 id = bpf_get_current_pid_tgid();
+	active_write_args_map__lookup(&id);
+
+	union __bpf_attr *ptr = (union __bpf_attr *) PT_REGS_PARM1(ctx);
+	union __bpf_attr uattr = { 0 };
+	bpf_probe_read_kernel(&uattr, sizeof(uattr), ptr);
+	bpf_debug("map %s\n", uattr.map_name);
+	bpf_debug("map key %u val %u max %u\n", uattr.key_size, uattr.value_size, uattr.max_entries);
+	return 0;
+}
+
+//kprobe:bpf_map_area_alloc
+//void *bpf_map_area_alloc(size_t size, int numa_node)
+KPROG(bpf_map_area_alloc) (struct pt_regs * ctx) {
+	__u64 id = bpf_get_current_pid_tgid();
+	active_write_args_map__lookup(&id);
+	size_t size = (size_t)PT_REGS_PARM1(ctx);
+	bpf_debug("- bpf_map_area_alloc size %ld\n", size);
+	return 0;
+}
+
 // ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);
 KPROG(__sys_sendmsg) (struct pt_regs * ctx) {
 	__u64 id = bpf_get_current_pid_tgid();
