@@ -2649,6 +2649,129 @@ static __inline int _bpf_readarg_trace_monitor_4(struct pt_regs *ctx, void *dest
   return 0;
 }
 #endif
+
+// https://docs.oracle.com/javase/8/docs/technotes/guides/vm/dtrace.html#Method_Compilation_Probes
+/*
+  stapsdt              0x00000065   NT_STAPSDT (SystemTap probe descriptors)
+    Provider: hotspot
+    Name: compiled__method__unload
+    Location: 0x0000000000900d00, Base: 0x0000000000c13a40, Semaphore: 0x0000000000000000
+    Arguments: 8@%rsi -4@%eax 8@%rdi -4@%ecx 8@%r8 -4@%edx
+  stapsdt              0x00000072   NT_STAPSDT (SystemTap probe descriptors)
+    Provider: hotspot
+    Name: compiled__method__load
+    Location: 0x0000000000904029, Base: 0x0000000000c13a40, Semaphore: 0x0000000000000000
+    Arguments: 8@%r13 -4@%eax 8@%rdi -4@%esi 8@%r8 -4@%r9d 8@%r10 -4@%edx
+  stapsdt              0x00000057   NT_STAPSDT (SystemTap probe descriptors)
+
+  stapsdt              0x00000077   NT_STAPSDT (SystemTap probe descriptors)
+    Provider: hotspot
+    Name: method__compile__begin
+    Location: 0x00000000004c0108, Base: 0x0000000000c13a40, Semaphore: 0x0000000000000000
+    Arguments: 8@-792(%rbp) 8@%rax 8@%rdx -4@%esi 8@%rdi -4@%ecx 8@%r8 -4@%r9d
+  stapsdt              0x00000080   NT_STAPSDT (SystemTap probe descriptors)
+    Provider: hotspot
+    Name: method__compile__end
+    Location: 0x00000000004c0653, Base: 0x0000000000c13a40, Semaphore: 0x0000000000000000
+    Arguments: 8@-752(%rbp) 8@%rax 8@%rdx -4@%ecx 8@%rsi -4@%edi 8@%r8 -4@%r9d 1@37(%r12)
+  stapsdt              0x0000005e   NT_STAPSDT (SystemTap probe descripto
+
+
+Probe	Description
+compiled-method-load	Probe that fires when a compiled method is installed. In addition to the arguments listed below, argv[6] contains a pointer to the compiled code, and argv[7] is the size of the compiled code
+compiled-method-unload	Probe that fires when a compiled method is uninstalled. Provides the arguments listed below
+Compiled method loading probe arguments:
+
+Probe Arguments	Description
+args[0]	A pointer to UTF-8 string data which contains the name of the class of the method being installed
+args[1]	The length of the class name data (in bytes)
+args[2]	A pointer to UTF-8 string data which contains the name of the method being installed
+args[3]	The length of the method name data (in bytes)
+args[4]	A pointer to UTF-8 string data which contains the signature of the method being installed
+args[5]	The length of the signature data (in bytes)
+*/
+
+SEC("usdt/method__compile__begin")
+int trace_method__compile__begin(struct pt_regs *ctx)
+{
+        __u64 id = bpf_get_current_pid_tgid();
+
+        struct data_args_t *data_args = NULL;
+
+        data_args = active_read_args_map__lookup(&id);
+        //void *ssl = (void *)PT_REGS_PARM1(ctx);
+        // The Java thread identifier for the thread performing the monitor operation 执行监视操作的线程的 Java 线程标识符
+        //__s64 thread_id = (__s64)PT_REGS_PARM1(ctx);
+        //_bpf_readarg_trace_monitor_1(ctx, (void *)&thread_id, 8);
+        // A unique, but opaque identifier for the specific monitor that the action is performed upon 执行操作的特定监视器的唯一但不透明的标识符
+        // 指向 UTF-8 字符串数据的指针，其中包含所操作对象的类名
+        // 类名数据的长度（以字节为单位）
+        bpf_debug("method__compile__begin\n");
+        return 0;
+}
+
+
+
+SEC("usdt/method__compile__end")
+int trace_method__compile__end(struct pt_regs *ctx)
+{
+        __u64 id = bpf_get_current_pid_tgid();
+
+        struct data_args_t *data_args = NULL;
+
+        data_args = active_read_args_map__lookup(&id);
+        //void *ssl = (void *)PT_REGS_PARM1(ctx);
+        // The Java thread identifier for the thread performing the monitor operation 执行监视操作的线程的 Java 线程标识符
+        //__s64 thread_id = (__s64)PT_REGS_PARM1(ctx);
+        //_bpf_readarg_trace_monitor_1(ctx, (void *)&thread_id, 8);
+        // A unique, but opaque identifier for the specific monitor that the action is performed upon 执行操作的特定监视器的唯一但不透明的标识符
+        // 指向 UTF-8 字符串数据的指针，其中包含所操作对象的类名
+        // 类名数据的长度（以字节为单位）
+        bpf_debug("method__compile__end\n");
+        return 0;
+}
+
+
+SEC("usdt/compiled__method__unload")
+int trace_compiled__method__unload(struct pt_regs *ctx)
+{
+        __u64 id = bpf_get_current_pid_tgid();
+
+        struct data_args_t *data_args = NULL;
+
+        data_args = active_read_args_map__lookup(&id);
+        //void *ssl = (void *)PT_REGS_PARM1(ctx);
+        // The Java thread identifier for the thread performing the monitor operation 执行监视操作的线程的 Java 线程标识符
+        //__s64 thread_id = (__s64)PT_REGS_PARM1(ctx);
+        //_bpf_readarg_trace_monitor_1(ctx, (void *)&thread_id, 8);
+        // A unique, but opaque identifier for the specific monitor that the action is performed upon 执行操作的特定监视器的唯一但不透明的标识符
+        // 指向 UTF-8 字符串数据的指针，其中包含所操作对象的类名
+        // 类名数据的长度（以字节为单位）
+        bpf_debug("compiled__method__unload\n");
+        return 0;
+}
+
+
+
+SEC("usdt/compiled__method__load")
+int trace_compiled__method__load(struct pt_regs *ctx)
+{
+        __u64 id = bpf_get_current_pid_tgid();
+
+        struct data_args_t *data_args = NULL;
+
+        data_args = active_read_args_map__lookup(&id);
+        //void *ssl = (void *)PT_REGS_PARM1(ctx);
+        // The Java thread identifier for the thread performing the monitor operation 执行监视操作的线程的 Java 线程标识符
+        __s64 thread_id = (__s64)PT_REGS_PARM1(ctx);
+        //_bpf_readarg_trace_monitor_1(ctx, (void *)&thread_id, 8);
+        // A unique, but opaque identifier for the specific monitor that the action is performed upon 执行操作的特定监视器的唯一但不透明的标识符
+        // 指向 UTF-8 字符串数据的指针，其中包含所操作对象的类名
+        // 类名数据的长度（以字节为单位）
+        bpf_debug("compiled__method__load = %ld\n", thread_id);
+        return 0;
+}
+
 SEC("usdt/monitor-contended-enter")
 int trace_monitor_contended_enter(struct pt_regs *ctx)
 {

@@ -1686,7 +1686,7 @@ static void *usdt_set_probes(int pid)
 	printf("usdt_test pid %d\n", pid);
         void *context = bcc_usdt_new_frompid(pid, NULL);
 
-
+#if 0
 #if 0
     Name: monitor__contended__exit
     Name: monitor__notify
@@ -1735,12 +1735,48 @@ const char *bcc_usdt_get_probe_argctype(
 	printf("----\n%s\n---\n", args);
         //bcc_usdt_close(context);
 
+#endif
+	/*
+
+  stapsdt              0x00000077   NT_STAPSDT (SystemTap probe descriptors)
+    Provider: hotspot
+    Name: method__compile__begin
+    Location: 0x00000000004c0108, Base: 0x0000000000c13a40, Semaphore: 0x0000000000000000
+    Arguments: 8@-792(%rbp) 8@%rax 8@%rdx -4@%esi 8@%rdi -4@%ecx 8@%r8 -4@%r9d
+  stapsdt              0x00000080   NT_STAPSDT (SystemTap probe descriptors)
+    Provider: hotspot
+    Name: method__compile__end
+    Location: 0x00000000004c0653, Base: 0x0000000000c13a40, Semaphore: 0x0000000000000000
+    Arguments: 8@-752(%rbp) 8@%rax 8@%rdx -4@%ecx 8@%rsi -4@%edi 8@%r8 -4@%r9d 1@37(%r12)
+  stapsdt              0x0000005e   NT_STAPSDT (SystemTap probe descriptors)
+
+
+	 Method Compilation Probes
+Probes are available to indicate which methods are being compiled and by which compiler. Probes are also available to track the installing and uninstalling of compiled methods.
+
+Probes that mark the begin and end of method compilation:
+
+Probe	Description
+method-compile-begin	Probe that fires as method compilation begins. Provides the arguments listed below
+method-compile-end	Probe that fires when method compilation completes. In addition to the arguments listed below, argv[8] is a boolean value which indicates if the compilation was successful
+*/
+	bcc_usdt_enable_probe(context, "method__compile__end", "trace_method__compile__end");
+	bcc_usdt_enable_probe(context, "method__compile__begin", "trace_method__compile__begin");
+	bcc_usdt_enable_probe(context, "compiled__method__unload", "trace_compiled__method__unload");
+        bcc_usdt_enable_probe(context, "compiled__method__load", "trace_compiled__method__load");
+        const char *arg0 = bcc_usdt_get_probe_argctype(context, "compiled__method__load", 0);
+        printf("arg0:%s\n", arg0);
+        const char *arg1 = bcc_usdt_get_probe_argctype(context, "compiled__method__load", 1);
+        printf("arg1:%s\n", arg1);
+        const char *args = bcc_usdt_genargs(&context, 1);
+        printf("----\n%s\n---\n", args);
+
 	return context;
 }
 
 void usdt_test(void)
 {
-	void *usdt = usdt_set_probes(31709);
+	void *usdt = usdt_set_probes(25536);
 	bcc_usdt_foreach_uprobe(usdt, usdt_uprobe_attach_cb);
 }
 
