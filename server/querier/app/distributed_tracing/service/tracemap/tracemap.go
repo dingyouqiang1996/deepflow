@@ -16,6 +16,9 @@
 package tracemap
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/deepflowio/deepflow/server/querier/app/distributed_tracing/model"
@@ -23,6 +26,16 @@ import (
 )
 
 func TraceMap(args model.TraceMap, cfg *config.QuerierConfig, c *gin.Context, done chan bool, generator *TraceMapGenerator) {
+	i := 0
+	c.Stream(func(w io.Writer) bool {
+		fmt.Println("asdf")
+		if i == 3 {
+			return false
+		} else {
+			i++
+			return true
+		}
+	})
 	done <- true
 	return
 }
