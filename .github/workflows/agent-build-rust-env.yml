@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - package-rust-env
+      - udpate_centos_yum_source
     paths:
       - 'agent/docker/DockerfileToFix.build'
       - 'agent/docker/DockerfileToFix-aarch64.build'
