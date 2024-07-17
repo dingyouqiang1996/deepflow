@@ -1027,12 +1027,12 @@ impl Params<'_> {
             let Some(value) = p.value.as_ref() else {
                 return false;
             };
-            for c in value.as_bytes() {
-                match c {
-                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' => (),
-                    _ => return false,
-                }
-            }
+            // for c in value.as_bytes() {
+            //     match c {
+            //         b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' => (),
+            //         _ => return false,
+            //     }
+            // }
         }
         true
     }
