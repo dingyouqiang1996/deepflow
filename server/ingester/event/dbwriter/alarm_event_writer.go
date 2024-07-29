@@ -160,7 +160,7 @@ func (e *AlarmEventStore) OrgID() uint16 {
 	return e.OrgId
 }
 
-func GenAlarmEventCKTable(cluster, storagePolicy string, ttl int, coldStorage *ckdb.ColdStorage) *ckdb.Table {
+func GenAlarmEventCKTable(cluster, storagePolicy, ckdbType string, ttl int, coldStorage *ckdb.ColdStorage) *ckdb.Table {
 	table := common.ALARM_EVENT.TableName()
 	timeKey := "time"
 	engine := ckdb.MergeTree
@@ -169,6 +169,7 @@ func GenAlarmEventCKTable(cluster, storagePolicy string, ttl int, coldStorage *c
 	return &ckdb.Table{
 		Version:         basecommon.CK_VERSION,
 		Database:        EVENT_DB,
+		DBType:          ckdbType,
 		LocalName:       table + ckdb.LOCAL_SUBFFIX,
 		GlobalName:      table,
 		Columns:         AlarmEventColumns(),
@@ -196,7 +197,7 @@ func NewAlarmEventWriter(config *config.Config) (*EventWriter, error) {
 		writerConfig:      config.CKWriterConfig,
 	}
 
-	ckTable := GenAlarmEventCKTable(w.ckdbCluster, w.ckdbStoragePolicy, w.ttl, ckdb.GetColdStorage(w.ckdbColdStorages, EVENT_DB, common.ALARM_EVENT.TableName()))
+	ckTable := GenAlarmEventCKTable(w.ckdbCluster, w.ckdbStoragePolicy, config.Base.CKDB.Type, w.ttl, ckdb.GetColdStorage(w.ckdbColdStorages, EVENT_DB, common.ALARM_EVENT.TableName()))
 
 	ckwriter, err := ckwriter.NewCKWriter(w.ckdbAddrs, w.ckdbUsername, w.ckdbPassword,
 		common.ALARM_EVENT.TableName(), config.Base.CKDB.TimeZone, ckTable, w.writerConfig.QueueCount, w.writerConfig.QueueSize, w.writerConfig.BatchSize, w.writerConfig.FlushTimeout, config.Base.CKDB.Watcher)

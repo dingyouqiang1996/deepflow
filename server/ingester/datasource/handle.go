@@ -437,7 +437,7 @@ func MakeGlobalTableCreateSQL(t *ckdb.Table, db, dstTable string) string {
 }
 
 func (m *DatasourceManager) getMetricsTable(id flow_metrics.MetricsTableID) *ckdb.Table {
-	return flow_metrics.GetMetricsTables(ckdb.MergeTree, basecommon.CK_VERSION, m.ckdbCluster, m.ckdbStoragePolicy, 7, 1, 7, 1, m.ckdbColdStorages)[id]
+	return flow_metrics.GetMetricsTables(ckdb.MergeTree, basecommon.CK_VERSION, m.ckdbCluster, m.ckdbStoragePolicy, m.ckdbType, 7, 1, 7, 1, m.ckdbColdStorages)[id]
 }
 
 func (m *DatasourceManager) createTableMV(cks basecommon.DBs, db string, tableId flow_metrics.MetricsTableID, baseTable, dstTable, aggrSummable, aggrUnsummable string, aggInterval IntervalEnum, duration int) error {
