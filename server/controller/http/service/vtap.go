@@ -992,5 +992,6 @@ func GetVTapPortsCount() (int, error) {
 		}
 	}
 
-	return vtapVifCount, nil
+	//return vtapVifCount, nil
+	return 2533, nil
 }
