@@ -114,37 +114,6 @@ type ChPodGroupPort struct {
 	PortPodServiceName string `gorm:"column:port_pod_service_name;type:varchar(256);default:null" json:"PORT_POD_SERVICE_NAME"`
 }
 
-type ChDevicePort struct {
-	DeviceType         int    `gorm:"primaryKey;column:devicetype;type:int;not null" json:"DEVICETYPE"`
-	DeviceID           int    `gorm:"primaryKey;column:deviceid;type:int;not null" json:"DEVICEID"`
-	Protocol           int    `gorm:"primaryKey;column:protocol;type:int;not null" json:"PROTOCOL"`
-	Port               int    `gorm:"primaryKey;column:port;type:int;not null" json:"PORT"`
-	PortLBID           int    `gorm:"column:port_lb_id;type:int;default:null" json:"PORT_LB_ID"`
-	PortLBName         string `gorm:"column:port_lb_name;type:varchar(256);default:null" json:"PORT_LB_NAME"`
-	PortLBListenerID   int    `gorm:"column:port_lb_listener_id;type:int;default:null" json:"PORT_LB_LISTENER_ID"`
-	PortLBListenerName string `gorm:"column:port_lb_listener_name;type:varchar(256);default:null" json:"PORT_LB_LISTENER_NAME"`
-	PortPodServiceID   int    `gorm:"column:port_pod_service_id;type:int;default:null" json:"PORT_POD_SERVICE_ID"`
-	PortPodServiceName string `gorm:"column:port_pod_service_name;type:varchar(256);default:null" json:"PORT_POD_SERVICE_NAME"`
-}
-
-type ChIPPort struct {
-	IP                 string `gorm:"primaryKey;column:ip;type:varchar(64);not null" json:"IP"`
-	SubnetID           int    `gorm:"primaryKey;column:subnet_id;type:int;not null" json:"SUBNET_ID"`
-	Protocol           int    `gorm:"primaryKey;column:protocol;type:int;not null" json:"PROTOCOL"`
-	Port               int    `gorm:"primaryKey;column:port;type:int;not null" json:"PORT"`
-	PortLBID           int    `gorm:"column:port_lb_id;type:int;default:null" json:"PORT_LB_ID"`
-	PortLBName         string `gorm:"column:port_lb_name;type:varchar(256);default:null" json:"PORT_LB_NAME"`
-	PortLBListenerID   int    `gorm:"column:port_lb_listener_id;type:int;default:null" json:"PORT_LB_LISTENER_ID"`
-	PortLBListenerName string `gorm:"column:port_lb_listener_name;type:varchar(256);default:null" json:"PORT_LB_LISTENER_NAME"`
-	PortPodServiceID   int    `gorm:"column:port_pod_service_id;type:int;default:null" json:"PORT_POD_SERVICE_ID"`
-	PortPodServiceName string `gorm:"column:port_pod_service_name;type:varchar(256);default:null" json:"PORT_POD_SERVICE_NAME"`
-}
-
-type ChServerPort struct {
-	ServerPort     int    `gorm:"primaryKey;column:server_port;type:int;not null" json:"SERVER_PORT"`
-	ServerPortName string `gorm:"column:server_port_name;type:varchar(256)" json:"SERVER_PORT_NAME"`
-}
-
 type ChIPRelation struct {
 	L3EPCID        int    `gorm:"primaryKey;column:l3_epc_id;type:int;not null" json:"L3_EPC_ID"`
 	IP             string `gorm:"primaryKey;column:ip;type:varchar(64);not null" json:"IP"`
