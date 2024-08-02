@@ -19,7 +19,9 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::mem;
 use std::net::IpAddr;
-use std::path::PathBuf;
+#[cfg(any(target_os = "linux"))]
+use std::os::unix::io::AsRawFd;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::{
@@ -40,6 +42,8 @@ use kube::{
 };
 use log::{debug, error, info, warn};
 use md5::{Digest, Md5};
+#[cfg(any(target_os = "linux"))]
+use nix::sched::{setns, CloneFlags};
 use parking_lot::{Mutex, RwLock, RwLockUpgradableReadGuard};
 use prost::Message;
 use rand::RngCore;
@@ -1623,7 +1627,7 @@ pub struct RuntimeEnvironment {
 }
 
 impl RuntimeEnvironment {
-    fn new() -> RuntimeEnvironment {
+    fn get_runtime_environment() -> RuntimeEnvironment {
         let mut sys = System::new();
         sys.refresh_system();
         RuntimeEnvironment {
@@ -1637,6 +1641,35 @@ impl RuntimeEnvironment {
             ),
             kernel_version: sys.kernel_version().unwrap_or_default(),
         }
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "android"))]
+    fn new() -> RuntimeEnvironment {
+        Self::get_runtime_environment()
+    }
+
+    #[cfg(any(target_os = "linux"))]
+    fn new() -> RuntimeEnvironment {
+        const ROOT_MNT_PATH: &'static str = "/proc/1/ns/mnt";
+        const ORIGIN_MNT_PATH: &'static str = "/proc/self/ns/mnt";
+
+        fn set_mntns(fp: &File) -> bool {
+            setns(fp.as_raw_fd(), CloneFlags::CLONE_NEWNS).is_ok()
+        }
+        // If the ORIGIN_MNT_PATH or ROOT_MNT_PATH does not exist, it may be due to a kernel version that is too low
+        // to support MNT namespaces, therefore, do not switch MNT namespaces and directly return the runtime environment.
+        let Ok(origin_fp) = File::open(Path::new(ORIGIN_MNT_PATH)) else {
+            return Self::get_runtime_environment();
+        };
+        let Ok(root_fp) = File::open(Path::new(ROOT_MNT_PATH)) else {
+            return Self::get_runtime_environment();
+        };
+        if !set_mntns(&root_fp) {
+            return Self::get_runtime_environment();
+        }
+        let runtime_env = Self::get_runtime_environment();
+        set_mntns(&origin_fp);
+        runtime_env
     }
 }
 
