@@ -1259,7 +1259,7 @@ func GetRemoteReadFilter(promTag, table, op, value, originFilter string, e *CHEn
 				valueIDs := []string{}
 				for _, v := range appLabelRst.Values {
 					valueID := v.([]interface{})[0]
-					valueIDInt := valueID.(int)
+					valueIDInt := int(valueID.(uint64))
 					valueIDString := fmt.Sprintf("%d", valueIDInt)
 					valueIDs = append(valueIDs, valueIDString)
 				}

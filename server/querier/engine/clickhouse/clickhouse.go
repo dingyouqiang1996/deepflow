@@ -1019,7 +1019,7 @@ func (e *CHEngine) TransPrometheusTargetIDFilter(expr view.Node) (view.Node, err
 		targetIDs := []string{}
 		for _, v := range targetLabelRst.Values {
 			targetID := v.([]interface{})[0]
-			targetIDInt := targetID.(int)
+			targetIDInt := int(targetID.(uint64))
 			targetIDString := fmt.Sprintf("%d", targetIDInt)
 			targetIDs = append(targetIDs, targetIDString)
 		}
