@@ -131,7 +131,7 @@ uluru = "3.0.0"
 
 [build-dependencies]
 chrono = "0.4"
-dunce = "0.1.1"
+dunce = "1.0.5"
 tonic-build = "0.8.0"
 
 [features]
