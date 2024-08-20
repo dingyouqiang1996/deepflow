@@ -18,6 +18,7 @@ package dbwriter
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,7 +79,8 @@ func unlockPrometheusCKWriters() {
 type PrometheusWriter struct {
 	decoderIndex      int
 	name              string
-	ckdbAddrs         []string
+	ckdbAddrs         *[]string
+	currentCkdbAddrs  []string
 	ckdbUsername      string
 	ckdbPassword      string
 	ckdbCluster       string
@@ -102,7 +104,7 @@ type PrometheusWriter struct {
 
 func (w *PrometheusWriter) InitTable(appLabelCount int) error {
 	if w.ckdbConn == nil {
-		conn, err := common.NewCKConnections(w.ckdbAddrs, w.ckdbUsername, w.ckdbPassword)
+		conn, err := common.NewCKConnections(w.currentCkdbAddrs, w.ckdbUsername, w.ckdbPassword)
 		if err != nil {
 			return err
 		}
@@ -133,8 +135,13 @@ func (w *PrometheusWriter) getOrCreateCkwriter(s PrometheusSampleInterface) (*ck
 		return writer, nil
 	}
 
-	if w.ckdbConn == nil {
-		conn, err := common.NewCKConnections(w.ckdbAddrs, w.ckdbUsername, w.ckdbPassword)
+	if w.ckdbConn == nil || !reflect.DeepEqual(w.currentCkdbAddrs, *w.ckdbAddrs) {
+		w.currentCkdbAddrs = *w.ckdbAddrs
+		if w.ckdbConn != nil {
+			w.ckdbConn.Close()
+			log.Infof("prometheus change clickhouse endpoints from %+v to %+v", w.currentCkdbAddrs, *w.ckdbAddrs)
+		}
+		conn, err := common.NewCKConnections(w.currentCkdbAddrs, w.ckdbUsername, w.ckdbPassword)
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +154,7 @@ func (w *PrometheusWriter) getOrCreateCkwriter(s PrometheusSampleInterface) (*ck
 	table := s.GenCKTable(w.ckdbCluster, w.ckdbStoragePolicy, w.ckdbType, w.ttl, ckdb.GetColdStorage(w.ckdbColdStorages, s.DatabaseName(), s.TableName()), appLabelCount)
 
 	ckwriter, err := ckwriter.NewCKWriter(
-		w.ckdbAddrs, w.ckdbUsername, w.ckdbPassword,
+		w.currentCkdbAddrs, w.ckdbUsername, w.ckdbPassword,
 		fmt.Sprintf("%s-%s-%d-%d", w.name, s.TableName(), w.decoderIndex, appLabelCount), w.ckdbTimeZone,
 		table, w.writerConfig.QueueCount, w.writerConfig.QueueSize, w.writerConfig.BatchSize, w.writerConfig.FlushTimeout, w.ckdbWatcher)
 	if err != nil {
@@ -325,6 +332,7 @@ func NewPrometheusWriter(
 		decoderIndex:            decoderIndex,
 		name:                    name,
 		ckdbAddrs:               config.Base.CKDB.ActualAddrs,
+		currentCkdbAddrs:        *config.Base.CKDB.ActualAddrs,
 		ckdbUsername:            config.Base.CKDBAuth.Username,
 		ckdbPassword:            config.Base.CKDBAuth.Password,
 		ckdbCluster:             config.Base.CKDB.ClusterName,

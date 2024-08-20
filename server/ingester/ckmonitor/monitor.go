@@ -18,6 +18,7 @@ package ckmonitor
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -40,7 +41,8 @@ type Monitor struct {
 	checkInterval int
 
 	Conns              common.DBs
-	Addrs              []string
+	Addrs              *[]string
+	CurrentAddrs       []string
 	username, password string
 	exit               bool
 
@@ -64,6 +66,7 @@ func NewCKMonitor(cfg *config.Config) (*Monitor, error) {
 		cfg:           cfg,
 		checkInterval: cfg.CKDiskMonitor.CheckInterval,
 		Addrs:         cfg.CKDB.ActualAddrs,
+		CurrentAddrs:  *cfg.CKDB.ActualAddrs,
 		username:      cfg.CKDBAuth.Username,
 		password:      cfg.CKDBAuth.Password,
 		statsEncoder:  &codec.SimpleEncoder{},
@@ -77,10 +80,6 @@ func NewCKMonitor(cfg *config.Config) (*Monitor, error) {
 		return nil, err
 	}
 	m.statsClient = statsClient
-	m.Conns, err = common.NewCKConnections(m.Addrs, m.username, m.password)
-	if err != nil {
-		return nil, err
-	}
 
 	return m, nil
 }
@@ -114,8 +113,25 @@ func (m *Monitor) sendStats(name, db, table, partition string, bytesOnDisk, rows
 
 // 如果clickhouse重启等，需要自动更新连接
 func (m *Monitor) updateConnections() {
-	if len(m.Addrs) == 0 {
+	if len(*m.Addrs) == 0 {
 		return
+	}
+	if !reflect.DeepEqual(m.CurrentAddrs, *m.Addrs) {
+		m.CurrentAddrs = *m.Addrs
+		for _, connect := range m.Conns {
+			if connect != nil {
+				connect.Close()
+			}
+		}
+
+		m.Conns = m.Conns[:0]
+		for _, addr := range m.CurrentAddrs {
+			conns, err := common.NewCKConnection(addr, m.username, m.password)
+			if err != nil {
+				log.Warning(err)
+			}
+			m.Conns = append(m.Conns, conns)
+		}
 	}
 
 	var err error
@@ -124,7 +140,7 @@ func (m *Monitor) updateConnections() {
 			if connect != nil {
 				connect.Close()
 			}
-			m.Conns[i], err = common.NewCKConnection(m.Addrs[i], m.username, m.password)
+			m.Conns[i], err = common.NewCKConnection(m.CurrentAddrs[i], m.username, m.password)
 			if err != nil {
 				log.Warning(err)
 			}

@@ -18,6 +18,7 @@ package datasource
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	basecommon "github.com/deepflowio/deepflow/server/ingester/common"
@@ -528,11 +529,22 @@ func (m *DatasourceManager) modTableTTL(cks basecommon.DBs, db, table string, du
 	return err
 }
 
+func (m *DatasourceManager) updateCKConnections() {
+	if !reflect.DeepEqual(m.currentCkAddrs, *m.ckAddrs) {
+		m.cks.Close()
+		cks, err := basecommon.NewCKConnections(m.currentCkAddrs, m.user, m.password)
+		if err != nil {
+			log.Errorf("new ck connections failed: %s", err)
+		}
+		m.cks = cks
+	}
+}
+
 func (m *DatasourceManager) Handle(orgID int, action ActionEnum, dbGroup, baseTable, dstTable, aggrSummable, aggrUnsummable string, interval, duration int) error {
+	m.updateCKConnections()
 	if len(m.cks) == 0 {
 		return fmt.Errorf("ck connections is empty")
 	}
-
 	if IsModifiedOnlyDatasource(dbGroup) && action == MOD {
 		datasoureInfo := DatasourceModifiedOnly(dbGroup).DatasourceInfo()
 		datasourceId := datasoureInfo.ID
