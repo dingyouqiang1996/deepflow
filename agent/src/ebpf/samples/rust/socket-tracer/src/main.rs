@@ -419,7 +419,7 @@ fn main() {
         //    CString::new(".*".as_bytes()).unwrap().as_c_str().as_ptr(),
         //);
         set_feature_regex(
-            FEATURE_UPROBE_JAVA,
+            FEATURE_UPROBE_MEMPROF,
             CString::new(".*".as_bytes()).unwrap().as_c_str().as_ptr(),
         );
 

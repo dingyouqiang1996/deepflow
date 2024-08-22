@@ -101,7 +101,7 @@ pub const FEATURE_UPROBE_OPENSSL: c_int = 1;
 #[allow(dead_code)]
 pub const FEATURE_UPROBE_GOLANG: c_int = 2;
 #[allow(dead_code)]
-pub const FEATURE_UPROBE_JAVA: c_int = 3;
+pub const FEATURE_UPROBE_MEMPROF: c_int = 3;
 
 //L7层协议是否需要重新核实
 #[allow(dead_code)]

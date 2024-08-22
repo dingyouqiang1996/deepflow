@@ -137,18 +137,22 @@ static bool requires_dwarf_unwind_table(int pid) {
     if (!g_dwarf_enabled) {
         return false;
     }
+    char *path = get_elf_path_by_pid(pid);
+    if (path == NULL) {
+        return false;
+    }
+    char *exe_name = path + strlen(path) - 1;
+    while (exe_name > path && *(exe_name - 1) != '/') {
+        exe_name--;
+    }
+    // Java has JIT compiled code without DWARF info, not supported at the moment
+    if (strcmp(exe_name, "java") == 0) {
+        free(path);
+        return false;
+    }
 
     pthread_mutex_lock(&g_dwarf_regex.m);
     if (g_dwarf_regex.exists) {
-        char *path = get_elf_path_by_pid(pid);
-        if (path == NULL) {
-            pthread_mutex_unlock(&g_dwarf_regex.m);
-            return false;
-        }
-        char *exe_name = path + strlen(path) - 1;
-        while (exe_name > path && *(exe_name - 1) != '/') {
-            exe_name--;
-        }
         bool matched = !regexec(&g_dwarf_regex.regex, exe_name, 0, NULL, 0);
         free(path);
         pthread_mutex_unlock(&g_dwarf_regex.m);

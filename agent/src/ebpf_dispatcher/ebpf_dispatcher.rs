@@ -605,7 +605,7 @@ impl EbpfCollector {
                     config.ebpf.memory_profile.regex.as_str()
                 );
                 ebpf::set_feature_regex(
-                    ebpf::FEATURE_UPROBE_JAVA,
+                    ebpf::FEATURE_UPROBE_MEMPROF,
                     CString::new(config.ebpf.memory_profile.regex.as_str().as_bytes())
                         .unwrap()
                         .as_c_str()

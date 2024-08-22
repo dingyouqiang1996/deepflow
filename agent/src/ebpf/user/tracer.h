@@ -123,8 +123,8 @@ enum cfg_feature_idx {
 	FEATURE_UPROBE_OPENSSL,
 	// golang uprobe
 	FEATURE_UPROBE_GOLANG,
-	// java uprobe
-	FEATURE_UPROBE_JAVA,
+	// memory profile uprobe
+	FEATURE_UPROBE_MEMPROF,
 	FEATURE_MAX,
 };
 
