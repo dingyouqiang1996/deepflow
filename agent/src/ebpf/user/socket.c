@@ -136,7 +136,7 @@ static bool bpf_stats_map_update(struct bpf_tracer *tracer,
 static void socket_tracer_set_probes(struct tracer_probes_conf *tps)
 {
 	int index = 0, curr_idx;
-
+	probes_set_enter_symbol(tps, "tcp_data_ready");
 	probes_set_enter_symbol(tps, "__sys_sendmsg");
 	probes_set_enter_symbol(tps, "__sys_sendmmsg");
 	probes_set_enter_symbol(tps, "__sys_recvmsg");

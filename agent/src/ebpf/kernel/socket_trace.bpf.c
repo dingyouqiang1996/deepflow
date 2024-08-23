@@ -222,6 +222,11 @@ static __u32 __inline get_tcp_read_seq_from_fd(int fd)
 	__u32 tcp_seq = 0;
 	bpf_probe_read_kernel(&tcp_seq, sizeof(tcp_seq),
 			      sock + offset->tcp_sock__copied_seq_offset);
+
+	if (tcp_seq == 0)
+		return 0;
+	//bpf_debug("entry PID %d SK %p TCPSEQ %u\n", (int)(bpf_get_current_pid_tgid() >> 32), sock, tcp_seq);
+
 	return tcp_seq;
 }
 
@@ -1488,103 +1493,24 @@ static __inline int process_data(struct pt_regs *ctx, __u64 id,
 	if (unlikely(args->fd < 0 || (int)bytes_count <= 0))
 		return -1;
 
+	if (args->tcp_seq == 0)
+		return -1;
 	/*
 	 * TODO:
 	 * Here you can filter the pid according to the configuration.
 	 */
 
-	__u32 k0 = 0, k1 = 1;
-	struct member_fields_offset *offset = members_offset__lookup(&k0);
-	if (!offset)
-		return -1;
+        __u32 k0 = 0;
+        struct member_fields_offset *offset = members_offset__lookup(&k0);
+        if (!offset)
+                return 0;
 
-	if (unlikely(!offset->ready))
-		return -1;
+        void *sock = get_socket_from_fd(args->fd, offset);
+        if (sock == NULL)
+                return 0;
 
-	void *sk = get_socket_from_fd(args->fd, offset);
-	struct conn_info_s *conn_info, __conn_info = { 0 };
-	conn_info = &__conn_info;
-	__u8 sock_state;
-	if (!(sk != NULL &&
-	      ((sock_state = is_tcp_udp_data(sk, offset, conn_info))
-	       != SOCK_CHECK_TYPE_ERROR))) {
-		return -1;
-	}
-
-	init_conn_info(id >> 32, args->fd, conn_info, sk, offset);
-	if (conn_info->tuple.l4_protocol == IPPROTO_UDP &&
-	    conn_info->tuple.dport == 0) {
-		conn_info->tuple.dport = args->port;
-		if (conn_info->tuple.dport == 0 &&
-		    is_socket_info_valid(conn_info->socket_info_ptr) &&
-		    conn_info->socket_info_ptr->udp_pre_set_addr) {
-			conn_info->tuple.dport = conn_info->socket_info_ptr->port;
-			args->port = conn_info->tuple.dport;
-			bpf_probe_read_kernel(args->addr, sizeof(args->addr),
-					      conn_info->socket_info_ptr->ipaddr);
-		}
-	}
-
-	conn_info->direction = direction;
-
-	struct ctx_info_s *ctx_map = bpf_map_lookup_elem(&NAME(ctx_info), &k0);
-	if (!ctx_map)
-		return -1;
-
-	struct kprobe_port_bitmap *bypass = kprobe_port_bitmap__lookup(&k1);
-	if (bypass) {
-		if (is_set_bitmap(bypass->bitmap, conn_info->tuple.dport) ||
-		    is_set_bitmap(bypass->bitmap, conn_info->tuple.num)) {
-			return -1;
-		}
-	}
-
-	struct kprobe_port_bitmap *allow = kprobe_port_bitmap__lookup(&k0);
-	if (allow) {
-		if (is_set_bitmap(allow->bitmap, conn_info->tuple.dport) ||
-		    is_set_bitmap(allow->bitmap, conn_info->tuple.num)) {
-			conn_info->protocol = PROTO_CUSTOM;
-		}
-	}
-
-	int act;
-	act = infer_l7_class_1(ctx_map, conn_info, direction, args,
-			       bytes_count, sock_state, extra);
-
-	if (act == INFER_CONTINUE) {
-		ctx_map->tail_call.conn_info = __conn_info;
-		ctx_map->tail_call.extra = *extra;
-		ctx_map->tail_call.bytes_count = bytes_count;
-		ctx_map->tail_call.offset = offset;
-		ctx_map->tail_call.dir = direction;
-		/* Enter the protocol inference tail call program. */
-		if (extra->source == DATA_SOURCE_SYSCALL)
-			bpf_tail_call(ctx, &NAME(progs_jmp_tp_map),
-				      PROG_PROTO_INFER_TP_IDX);
-		else
-			bpf_tail_call(ctx, &NAME(progs_jmp_kp_map),
-				      PROG_PROTO_INFER_KP_IDX);
-	}
-
-	if (conn_info->protocol == PROTO_CUSTOM) {
-		if (conn_info->enable_reasm) {
-			conn_info->is_reasm_seg = true;
-		}
-	}
-
-	// When at least one of protocol or message_type is valid, 
-	// data_submit can be performed, otherwise MySQL data may be lost
-	if (conn_info->protocol != PROTO_UNKNOWN ||
-	    conn_info->message_type != MSG_UNKNOWN) {
-		/*
-		 * Fill in tail call context information.
-		 */
-		ctx_map->tail_call.conn_info = __conn_info;
-		ctx_map->tail_call.extra = *extra;
-		ctx_map->tail_call.bytes_count = bytes_count;
-		ctx_map->tail_call.offset = offset;
-
-		return 0;
+	if (direction == T_INGRESS) {
+		bpf_debug("return PID %d SK %p TCPSEQ %u\n", (int)(id >> 32), sock, args->tcp_seq);
 	}
 
 	return -1;
@@ -1602,13 +1528,7 @@ static __inline void process_syscall_data(struct pt_regs *ctx, __u64 id,
 		.is_go_process = is_current_go_process(),
 	};
 
-	if (!process_data(ctx, id, direction, args, bytes_count, &extra)) {
-		bpf_tail_call(ctx, &NAME(progs_jmp_tp_map),
-			      PROG_DATA_SUBMIT_TP_IDX);
-	} else {
-		bpf_tail_call(ctx, &NAME(progs_jmp_tp_map),
-			      PROG_IO_EVENT_TP_IDX);
-	}
+	process_data(ctx, id, direction, args, bytes_count, &extra);
 }
 
 static __inline void process_syscall_data_vecs(struct pt_regs *ctx, __u64 id,
@@ -1623,13 +1543,7 @@ static __inline void process_syscall_data_vecs(struct pt_regs *ctx, __u64 id,
 		.is_go_process = is_current_go_process(),
 	};
 
-	if (!process_data(ctx, id, direction, args, bytes_count, &extra)) {
-		bpf_tail_call(ctx, &NAME(progs_jmp_tp_map),
-			      PROG_DATA_SUBMIT_TP_IDX);
-	} else {
-		bpf_tail_call(ctx, &NAME(progs_jmp_tp_map),
-			      PROG_IO_EVENT_TP_IDX);
-	}
+	process_data(ctx, id, direction, args, bytes_count, &extra);
 }
 
 /***********************************************************
@@ -1680,6 +1594,8 @@ TP_SYSCALL_PROG(enter_read) (struct syscall_comm_enter_ctx * ctx) {
 	read_args.buf = buf;
 	read_args.enter_ts = bpf_ktime_get_ns();
 	read_args.tcp_seq = get_tcp_read_seq_from_fd(fd);
+	if (read_args.tcp_seq)
+		bpf_debug("entry PID %d fd %d TCPSEQ %u\n", (int)(bpf_get_current_pid_tgid() >> 32), fd, read_args.tcp_seq);
 	active_read_args_map__update(&id, &read_args);
 
 	return 0;
@@ -1796,6 +1712,8 @@ TP_SYSCALL_PROG(enter_recvfrom) (struct syscall_comm_enter_ctx * ctx) {
 	read_args.buf = buf;
 	read_args.enter_ts = bpf_ktime_get_ns();
 	read_args.tcp_seq = get_tcp_read_seq_from_fd(sockfd);
+	if (read_args.tcp_seq)
+	bpf_debug("entry PID %d fd %d TCPSEQ %u\n", (int)(bpf_get_current_pid_tgid() >> 32), sockfd, read_args.tcp_seq);
 	active_read_args_map__update(&id, &read_args);
 
 	return 0;
@@ -1815,6 +1733,28 @@ TP_SYSCALL_PROG(exit_recvfrom) (struct syscall_comm_exit_ctx * ctx) {
 		active_read_args_map__delete(&id);
 	}
 
+	return 0;
+}
+
+KPROG(tcp_data_ready) (struct pt_regs * ctx) {
+
+	void *sock = (void *)PT_REGS_PARM1(ctx);
+	if (sock == NULL)
+		return 0;
+
+        __u32 k0 = 0;
+        struct member_fields_offset *offset = members_offset__lookup(&k0);
+        if (!offset)
+                return 0;
+
+        __u32 tcp_seq = 0;
+        bpf_probe_read_kernel(&tcp_seq, sizeof(tcp_seq),
+                              sock + offset->tcp_sock__copied_seq_offset);
+
+	if(tcp_seq == 0)
+		return 0;
+
+        bpf_debug("tcp_data_ready PID %d SK %p TCPSEQ %u\n", (int)(bpf_get_current_pid_tgid() >> 32), sock, tcp_seq);
 	return 0;
 }
 
@@ -1932,6 +1872,8 @@ KPROG(__sys_recvmsg) (struct pt_regs * ctx) {
 		read_args.iovlen = msghdr->msg_iovlen;
 		read_args.enter_ts = bpf_ktime_get_ns();
 		read_args.tcp_seq = get_tcp_read_seq_from_fd(sockfd);
+		if (read_args.tcp_seq)
+		bpf_debug("entry PID %d fd %d TCPSEQ %u\n", (int)(bpf_get_current_pid_tgid() >> 32), sockfd, read_args.tcp_seq);
 		active_read_args_map__update(&id, &read_args);
 	}
 
@@ -1989,6 +1931,8 @@ KPROG(__sys_recvmmsg) (struct pt_regs * ctx) {
 		read_args.msg_len =
 		    (void *)msgvec + offsetof(typeof(struct mmsghdr), msg_len);
 		read_args.tcp_seq = get_tcp_read_seq_from_fd(sockfd);
+		if (read_args.tcp_seq)
+		bpf_debug("entry PID %d fd %d TCPSEQ %u\n", (int)(bpf_get_current_pid_tgid() >> 32), sockfd, read_args.tcp_seq);
 		active_read_args_map__update(&id, &read_args);
 	}
 
@@ -2074,6 +2018,10 @@ KPROG(do_readv) (struct pt_regs * ctx) {
 	read_args.iovlen = iovlen;
 	read_args.enter_ts = bpf_ktime_get_ns();
 	read_args.tcp_seq = get_tcp_read_seq_from_fd(fd);
+
+	if (read_args.tcp_seq)
+		bpf_debug("entry PID %d fd %d TCPSEQ %u\n", (int)(bpf_get_current_pid_tgid() >> 32), fd, read_args.tcp_seq);
+
 	active_read_args_map__update(&id, &read_args);
 
 	return 0;
