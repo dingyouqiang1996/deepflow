@@ -18,12 +18,10 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
-
-	//"database/sql"
-	"fmt"
 	"time"
 	"unsafe"
 
@@ -162,24 +160,50 @@ func (c *Client) DoQuery(params *QueryParams) (result *common.Result, err error)
 	columnValues := make([]interface{}, len(columns))
 	for i := range columns {
 		columnValues[i] = reflect.New(columns[i].ScanType()).Interface()
+		columnSchemas[i].ValueType = columns[i].DatabaseTypeName()
 	}
 	resSize := 0
+	fmt.Println("columnValues",len(columnValues))
 	for rows.Next() {
 		if err := rows.Scan(columnValues...); err != nil {
 			c.Debug.Error = fmt.Sprintf("%s", err)
 			return nil, err
 		}
+		// fmt.Println("columnValues",len(columnValues))
+		// fmt.Println("columnValues1",*columnValues[0].(*string))
+		// fmt.Println("columnValues1",*columnValues[1].(*string))
+		// fmt.Println("columnValues2",columnValues[1])
 		record := make([]interface{}, 0, len(columns))
-		for i, rawValue := range columnValues {
-			value, valueType, err := TransType(rawValue, columns[i].Name(), columns[i].DatabaseTypeName())
-			if err != nil {
-				c.Debug.Error = fmt.Sprintf("%s", err)
-				return nil, err
+		for _, rawValue := range columnValues {
+			// record = append(record, rawValue)
+			v := reflect.ValueOf(rawValue)
+    		if v.Kind() == reflect.Ptr {
+				elemValue := v.Elem()
+				realValue := elemValue.Interface()
+				// switch v2 := realValue.(type) {
+				// case string:
+				// 	fmt.Println("string",v2)
+				// }
+				resSize += int(unsafe.Sizeof(realValue))
+				record = append(record, realValue)
+				
 			}
-			resSize += int(unsafe.Sizeof(value))
-			record = append(record, value)
-			columnSchemas[i].ValueType = valueType
+			// switch v := rawValue.(type) {
+			// case *string, *int8:
+			// 	fmt.Println("string",*v)
+			// case *int16,*int32,*int64,*uint8,*uint16,*uint32,*uint64,*float32,*float64:
+			// 	record = append(record, *v)
+			// 	fmt.Println(*v)
+			// 	fmt.Println("stringptr",rawValue)
+			// default:
+			// 	resSize += int(unsafe.Sizeof(v))
+			// 	record = append(record, v)
+			// }
+			// value := rawValue
+			// resSize += int(unsafe.Sizeof(value))
+			// record = append(record, value)
 		}
+		// fmt.Println(record)
 		values = append(values, record)
 	}
 	// Even if the query operation produces an error, it does not necessarily return an error in the'err 'parameter,
